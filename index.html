@@ -88,11 +88,45 @@ h1 {
   transition: transform .15s, background .15s;
 }
 
+
+/* 动物交换时的移动效果 */
+.cell {
+  transition: background .15s;
+  will-change: transform, opacity;
+}
+
+/* 被选中的动物 */
 .cell.selected {
   background: #ffe36e;
   transform: scale(.88);
   outline: 3px solid #ff9d4d;
+  z-index: 2;
 }
+
+/* 动物消失效果 */
+.cell.matched {
+  animation: animalDisappear .25s ease-in forwards;
+  pointer-events: none;
+  z-index: 3;
+}
+
+@keyframes animalDisappear {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.3) rotate(12deg);
+    opacity: .8;
+  }
+
+  100% {
+    transform: scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
 
 .cell.empty {
   visibility: hidden;
@@ -299,24 +333,94 @@ function clickCell(i) {
   swap(a, i);
 }
 
-function swap(a, b) {
+
+async function swap(a, b) {
+  busy = true;
+
+  // 找到两个动物的位置
+  const cells = document.querySelectorAll(".cell");
+
+  const rectA = cells[a].getBoundingClientRect();
+  const rectB = cells[b].getBoundingClientRect();
+
+  const dx = rectB.left - rectA.left;
+  const dy = rectB.top - rectA.top;
+
+  // 播放交换移动动画
+  const animationA = cells[a].animate(
+    [
+      { transform: "translate(0, 0)" },
+      { transform: `translate(${dx}px, ${dy}px)` }
+    ],
+    {
+      duration: 250,
+      easing: "ease-in-out",
+      fill: "forwards"
+    }
+  );
+
+  const animationB = cells[b].animate(
+    [
+      { transform: "translate(0, 0)" },
+      { transform: `translate(${-dx}px, ${-dy}px)` }
+    ],
+    {
+      duration: 250,
+      easing: "ease-in-out",
+      fill: "forwards"
+    }
+  );
+
+  await Promise.all([
+    animationA.finished,
+    animationB.finished
+  ]);
+
+  // 真正交换动物
   [board[a], board[b]] = [board[b], board[a]];
 
+  render();
+
+  // 检查有没有形成三个相同动物
   const matches = findMatches();
 
   if (matches.length === 0) {
+    // 没有消除，播放返回动画
+    const newCells = document.querySelectorAll(".cell");
+
+    const backA = newCells[a].animate(
+      [
+        { transform: "translate(0, 0)" },
+        { transform: `translate(${dx}px, ${dy}px)` }
+      ],
+      { duration: 200, easing: "ease-in-out" }
+    );
+
+    const backB = newCells[b].animate(
+      [
+        { transform: "translate(0, 0)" },
+        { transform: `translate(${-dx}px, ${-dy}px)` }
+      ],
+      { duration: 200, easing: "ease-in-out" }
+    );
+
+    await Promise.all([backA.finished, backB.finished]);
+
     [board[a], board[b]] = [board[b], board[a]];
-    updateMessage("没有形成三消哦，再试一次！🐰");
+
+    busy = false;
     render();
+    updateMessage("没有形成三消哦，再试一次！🐰");
     return;
   }
 
+  // 成功交换才扣除步数
   moves--;
-  busy = true;
 
   render();
-  resolveMatches();
+  await resolveMatches();
 }
+
 
 function findMatches() {
   const found = new Set();
@@ -408,18 +512,40 @@ function dropAnimals() {
   }
 }
 
-function resolveMatches() {
+
+async function resolveMatches() {
   let matches = findMatches();
 
   while (matches.length > 0) {
+
+    // 先播放动物消失动画
+    matches.forEach(i => {
+      const cell = document.querySelectorAll(".cell")[i];
+
+      if (cell) {
+        cell.classList.add("matched");
+      }
+    });
+
+    // 等待消失动画完成
+    await new Promise(resolve => setTimeout(resolve, 270));
+
+    // 增加分数
     score += matches.length * 10;
 
+    // 删除消除的动物
     matches.forEach(i => {
       board[i] = null;
     });
 
+    render();
+
+    // 自动补充动物
     dropAnimals();
 
+    render();
+
+    // 检查是否产生连锁消除
     matches = findMatches();
   }
 
@@ -428,14 +554,16 @@ function resolveMatches() {
   render();
 
   if (moves <= 0) {
-    updateMessage("🎉 游戏结束！你的最终分数是：" + score);
+    updateMessage("🎉 游戏结束！最终分数：" + score);
+
     setTimeout(() => {
       alert("🐼 游戏结束！\n你的最终分数：" + score);
     }, 100);
   } else {
-    updateMessage("太棒了！继续消除动物吧！🐻");
+    updateMessage("✨ 消除成功！继续加油！🐻");
   }
 }
+
 
 startGame();
 </script>
