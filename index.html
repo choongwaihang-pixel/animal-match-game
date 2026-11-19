@@ -1,0 +1,444 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+<title>动物乐园 - 开心消消乐</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: linear-gradient(135deg,#fff0f5,#e5f5ff);
+  color: #59445c;
+  padding: 15px;
+}
+
+.container {
+  width: 100%;
+  max-width: 500px;
+  margin: auto;
+}
+
+h1 {
+  color: #ff79a9;
+  font-size: 30px;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: #927b98;
+  margin-bottom: 20px;
+}
+
+.info {
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.info-card {
+  background: white;
+  border-radius: 18px;
+  padding: 12px;
+  flex: 1;
+  box-shadow: 0 4px 10px #e5cfe0;
+}
+
+.info-card div {
+  font-size: 13px;
+}
+
+.info-card strong {
+  font-size: 25px;
+  color: #ff72a5;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  padding: 9px;
+  background: #f7cce1;
+  border-radius: 18px;
+  box-shadow: 0 6px 15px #e2b4d0;
+  touch-action: manipulation;
+}
+
+.cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  border-radius: 10px;
+  font-size: clamp(19px, 6vw, 32px);
+  cursor: pointer;
+  user-select: none;
+  transition: transform .15s, background .15s;
+}
+
+.cell.selected {
+  background: #ffe36e;
+  transform: scale(.88);
+  outline: 3px solid #ff9d4d;
+}
+
+.cell.empty {
+  visibility: hidden;
+}
+
+button {
+  border: none;
+  border-radius: 25px;
+  background: #ff79a9;
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
+  padding: 14px 28px;
+  margin-top: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px #e8b2cb;
+}
+
+button:active {
+  transform: scale(.96);
+}
+
+.message {
+  margin-top: 15px;
+  min-height: 25px;
+  color: #9a6489;
+  font-weight: bold;
+}
+
+.instructions {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 15px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+@media(max-width:380px) {
+  body { padding: 8px; }
+  .board { gap: 3px; padding: 6px; }
+  .cell { border-radius: 6px; }
+  h1 { font-size: 25px; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>🐼 动物乐园 🐰</h1>
+<div class="subtitle">✨ 开心消消乐 ✨</div>
+
+<div class="info">
+  <div class="info-card">
+    <div>🏆 我的分数</div>
+    <strong id="score">0</strong>
+  </div>
+  <div class="info-card">
+    <div>👣 剩余步数</div>
+    <strong id="moves">30</strong>
+  </div>
+</div>
+
+<div id="board" class="board"></div>
+
+<div class="message" id="message">
+  点击两个相邻的动物来交换！
+</div>
+
+<button onclick="startGame()">
+  🔄 重新开始
+</button>
+
+<div class="instructions">
+  🐻 游戏规则<br>
+  1. 点击两个相邻的动物交换位置。<br>
+  2. 三个或以上相同动物连在一起就能消除。<br>
+  3. 每次成功交换消耗一步。<br>
+  4. 消除动物可以获得分数！<br>
+  5. 用完30步，看看你能获得多少分！
+</div>
+
+</div>
+
+<script>
+const SIZE = 8;
+
+const animals = [
+  "🐼","🐰","🐱","🐻","🦊","🐸"
+];
+
+let board = [];
+let score = 0;
+let moves = 30;
+let selected = null;
+let busy = false;
+
+function randomAnimal() {
+  return animals[
+    Math.floor(Math.random() * animals.length)
+  ];
+}
+
+// 创建不会一开始就出现三消的棋盘
+function createBoard() {
+  board = [];
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      let animal;
+
+      do {
+        animal = randomAnimal();
+      } while (
+        (c >= 2 &&
+         board[r * SIZE + c - 1] === animal &&
+         board[r * SIZE + c - 2] === animal) ||
+        (r >= 2 &&
+         board[(r - 1) * SIZE + c] === animal &&
+         board[(r - 2) * SIZE + c] === animal)
+      );
+
+      board.push(animal);
+    }
+  }
+}
+
+function startGame() {
+  score = 0;
+  moves = 30;
+  selected = null;
+  busy = false;
+
+  createBoard();
+  updateMessage("点击两个相邻的动物来交换！");
+  render();
+}
+
+function render() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("moves").textContent = moves;
+
+  const el = document.getElementById("board");
+  el.innerHTML = "";
+
+  board.forEach((animal, i) => {
+    const cell = document.createElement("div");
+
+    cell.className = "cell";
+
+    if (!animal) cell.classList.add("empty");
+    if (selected === i) cell.classList.add("selected");
+
+    cell.textContent = animal || "";
+
+    cell.addEventListener("click", () => clickCell(i));
+
+    el.appendChild(cell);
+  });
+}
+
+function updateMessage(message) {
+  document.getElementById("message").textContent = message;
+}
+
+function adjacent(a, b) {
+  const rowA = Math.floor(a / SIZE);
+  const colA = a % SIZE;
+
+  const rowB = Math.floor(b / SIZE);
+  const colB = b % SIZE;
+
+  return (
+    Math.abs(rowA - rowB) +
+    Math.abs(colA - colB) === 1
+  );
+}
+
+function clickCell(i) {
+  if (busy || moves <= 0) return;
+
+  if (selected === null) {
+    selected = i;
+    render();
+    return;
+  }
+
+  if (selected === i) {
+    selected = null;
+    render();
+    return;
+  }
+
+  if (!adjacent(selected, i)) {
+    selected = i;
+    render();
+    return;
+  }
+
+  const a = selected;
+  selected = null;
+
+  swap(a, i);
+}
+
+function swap(a, b) {
+  [board[a], board[b]] = [board[b], board[a]];
+
+  const matches = findMatches();
+
+  if (matches.length === 0) {
+    [board[a], board[b]] = [board[b], board[a]];
+    updateMessage("没有形成三消哦，再试一次！🐰");
+    render();
+    return;
+  }
+
+  moves--;
+  busy = true;
+
+  render();
+  resolveMatches();
+}
+
+function findMatches() {
+  const found = new Set();
+
+  // 横向检查
+  for (let r = 0; r < SIZE; r++) {
+    let c = 0;
+
+    while (c < SIZE) {
+      const i = r * SIZE + c;
+      const animal = board[i];
+
+      if (!animal) {
+        c++;
+        continue;
+      }
+
+      let end = c + 1;
+
+      while (
+        end < SIZE &&
+        board[r * SIZE + end] === animal
+      ) {
+        end++;
+      }
+
+      if (end - c >= 3) {
+        for (let k = c; k < end; k++) {
+          found.add(r * SIZE + k);
+        }
+      }
+
+      c = end;
+    }
+  }
+
+  // 纵向检查
+  for (let c = 0; c < SIZE; c++) {
+    let r = 0;
+
+    while (r < SIZE) {
+      const animal = board[r * SIZE + c];
+
+      if (!animal) {
+        r++;
+        continue;
+      }
+
+      let end = r + 1;
+
+      while (
+        end < SIZE &&
+        board[end * SIZE + c] === animal
+      ) {
+        end++;
+      }
+
+      if (end - r >= 3) {
+        for (let k = r; k < end; k++) {
+          found.add(k * SIZE + c);
+        }
+      }
+
+      r = end;
+    }
+  }
+
+  return [...found];
+}
+
+function dropAnimals() {
+  for (let c = 0; c < SIZE; c++) {
+    const remaining = [];
+
+    for (let r = SIZE - 1; r >= 0; r--) {
+      const animal = board[r * SIZE + c];
+
+      if (animal) remaining.push(animal);
+    }
+
+    while (remaining.length < SIZE) {
+      remaining.push(randomAnimal());
+    }
+
+    for (let r = SIZE - 1; r >= 0; r--) {
+      board[r * SIZE + c] =
+        remaining[SIZE - 1 - r];
+    }
+  }
+}
+
+function resolveMatches() {
+  let matches = findMatches();
+
+  while (matches.length > 0) {
+    score += matches.length * 10;
+
+    matches.forEach(i => {
+      board[i] = null;
+    });
+
+    dropAnimals();
+
+    matches = findMatches();
+  }
+
+  busy = false;
+
+  render();
+
+  if (moves <= 0) {
+    updateMessage("🎉 游戏结束！你的最终分数是：" + score);
+    setTimeout(() => {
+      alert("🐼 游戏结束！\n你的最终分数：" + score);
+    }, 100);
+  } else {
+    updateMessage("太棒了！继续消除动物吧！🐻");
+  }
+}
+
+startGame();
+</script>
+
+</body>
+</html>
