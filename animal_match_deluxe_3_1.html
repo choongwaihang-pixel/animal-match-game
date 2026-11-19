@@ -1,0 +1,833 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#fff0f6">
+<title>动物乐园 - 开心消消乐关卡挑战版</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 18px 12px 30px;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: #355c46;
+  background:
+    radial-gradient(circle at 12% 18%, #ffffff80 0 3px, transparent 4px),
+    radial-gradient(circle at 82% 28%, #ffffff70 0 4px, transparent 5px),
+    linear-gradient(145deg, #b8e6a3 0%, #d9f0b2 32%, #a8d9c4 68%, #8fc7a8 100%);
+  background-attachment: fixed;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+}
+
+h1 {
+  color: #28613f;
+  text-shadow: 0 2px 0 #eaffd8;
+  font-size: 30px;
+  margin: 8px 0;
+}
+
+.subtitle {
+  color: #987a9b;
+  margin-bottom: 20px;
+}
+
+.info {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.info-card {
+  flex: 1;
+  background: rgba(255,255,255,.88);
+  border: 2px solid #d8edc8;
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 4px 12px #e8c9dc;
+}
+
+.info-card div {
+  font-size: 13px;
+}
+
+.info-card strong {
+  display: block;
+  font-size: 26px;
+  color: #ff72a5;
+  margin-top: 5px;
+}
+
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+  padding: 9px;
+  background: linear-gradient(145deg, #8dbe78, #6da66f);
+  border: 5px solid #d8edb9;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px #477b5b80, inset 0 0 0 2px #ffffff55;
+
+  /* 允许拖拽动物，避免页面跟着滚动 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+  
+
+.cell {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(145deg, #fffef2, #eaf6d9);
+  border: 1px solid #c5dfa9;
+  border-radius: 11px;
+  font-size: clamp(19px, 6vw, 34px);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform, opacity;
+}
+
+.cell.selected {
+  background: #ffe77c;
+  outline: 3px solid #ff9e50;
+  z-index: 2;
+  animation: selectedPulse .55s infinite alternate;
+}
+
+@keyframes selectedPulse {
+  from { transform: scale(1); }
+  to { transform: scale(.90); }
+}
+
+/* 消除动画 */
+.cell.matched {
+  animation: animalPop .32s ease-in forwards;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes animalPop {
+  0% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(1.3) rotate(12deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0) rotate(-25deg);
+    opacity: 0;
+  }
+}
+
+/* 新动物掉落动画 */
+.cell.falling {
+  animation: animalFall .3s ease-out;
+}
+
+@keyframes animalFall {
+  from {
+    transform: translateY(-70px);
+    opacity: .2;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+button {
+  border: none;
+  border-radius: 28px;
+  padding: 14px 28px;
+  margin-top: 20px;
+  background: linear-gradient(135deg, #4c9b62, #28744d);
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 9px #477b5b80;
+}
+
+button:active {
+  transform: scale(.95);
+}
+
+.message {
+  margin-top: 16px;
+  min-height: 28px;
+  font-weight: bold;
+  color: #326b49;
+}
+
+.instructions {
+  margin-top: 18px;
+  padding: 15px;
+  border-radius: 17px;
+  background: rgba(255,255,240,.9);
+  border: 2px solid #d4e9bd;
+  font-size: 14px;
+  line-height: 1.9;
+  box-shadow: 0 3px 10px #ead7e5;
+}
+
+
+/* 森林动物主题装饰与特殊动物 */
+h1 { letter-spacing: 1px; }
+.combo-banner {
+  min-height: 46px;
+  margin: 8px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(23px, 6vw, 34px);
+  font-weight: 900;
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 3px 0 #9b5a19, 0 0 12px #fff3a0;
+  -webkit-text-stroke: 1px #b76b24;
+}
+.combo-banner.show {
+  animation: comboCelebrate .78s cubic-bezier(.2,.85,.25,1) both;
+}
+@keyframes comboCelebrate {
+  0% { opacity: 0; transform: translateY(12px) scale(.45) rotate(-8deg); }
+  22% { opacity: 1; transform: translateY(-5px) scale(1.2) rotate(4deg); }
+  45% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+  82% { opacity: 1; transform: translateY(-3px) scale(1.04); }
+  100% { opacity: 0; transform: translateY(-14px) scale(.9); }
+}
+.subtitle { color: #477b57; }
+.cell.special-line {
+  background: linear-gradient(145deg, #fff7b0, #ffd45d);
+  box-shadow: inset 0 0 0 2px #f5a623, 0 0 8px #ffd45d;
+}
+.cell.special-bomb {
+  background: radial-gradient(circle, #fff2c4, #ffb45c);
+  box-shadow: inset 0 0 0 2px #ed8b32, 0 0 10px #ffb45c;
+}
+.special-mark {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-size: clamp(9px, 2.5vw, 14px);
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px #fff);
+}
+.cell.matched-line { animation: lineFlash .38s ease-out forwards; }
+.cell.matched-bomb { animation: bombFlash .42s ease-out forwards; }
+@keyframes lineFlash {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.25); filter: brightness(2) saturate(1.5); }
+  100% { transform: scale(0) rotate(180deg); opacity: 0; }
+}
+@keyframes bombFlash {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(1.45); filter: brightness(2.4); }
+  100% { transform: scale(0) rotate(35deg); opacity: 0; }
+}
+.audio-controls {
+  display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+  margin: 12px 0 4px;
+}
+.audio-controls button {
+  margin-top: 0; padding: 10px 16px; font-size: 14px;
+  background: linear-gradient(135deg, #e3a83d, #c98228);
+}
+
+.info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.info-card { padding: 9px 7px; }
+.info-card strong { font-size: 24px; }
+.progress-wrap { margin: -5px 2px 15px; }
+.progress-track { height: 13px; overflow: hidden; border-radius: 20px; background: #ffffffb8; border: 2px solid #d8edc8; box-shadow: inset 0 1px 3px #477b5b35; }
+.progress-bar { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffd45d, #ff9c55); transition: width .28s ease; }
+.progress-text { margin-top: 5px; text-align: right; color: #477b57; font-size: 12px; font-weight: bold; }
+.level-note { margin-top: 10px; color: #477b57; font-size: 13px; font-weight: bold; }
+.result-overlay { display: none; position: fixed; inset: 0; z-index: 30; padding: 20px; align-items: center; justify-content: center; background: #244b36a8; backdrop-filter: blur(5px); }
+.result-overlay.show { display: flex; animation: overlayIn .22s ease-out; }
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+.result-card { width: min(100%, 360px); padding: 25px 20px 20px; border: 4px solid #d8edb9; border-radius: 25px; background: linear-gradient(145deg, #fffef2, #eaf6d9); box-shadow: 0 14px 40px #173d2b70; animation: cardPop .32s cubic-bezier(.2,.85,.25,1); }
+@keyframes cardPop { from { transform: translateY(18px) scale(.85); opacity: .4; } to { transform: translateY(0) scale(1); opacity: 1; } }
+.result-emoji { font-size: 54px; }
+.result-card h2 { margin: 8px 0; color: #28613f; }
+.result-card p { color: #477b57; line-height: 1.7; }
+.result-card button { display: block; width: 100%; margin: 13px 0 0; }
+.result-card .secondary-button { background: linear-gradient(135deg, #9ab68b, #6e9270); font-size: 14px; padding: 11px 20px; }
+@media(max-width:380px) {
+  body { padding: 10px 5px; }
+  .board { gap: 3px; padding: 6px; }
+  .cell { border-radius: 7px; }
+  h1 { font-size: 25px; }
+}
+
+@media(prefers-reduced-motion: reduce) {
+  .cell.selected {
+    animation: none;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>🐼 动物乐园 🐰</h1>
+  <div class="subtitle">✨ 开心消消乐 · 关卡挑战版 ✨</div>
+
+  <div class="info">
+    <div class="info-card">
+      <div>🗺️ 当前关卡</div>
+      <strong id="level">1</strong>
+    </div>
+    <div class="info-card">
+      <div>🎯 目标分数</div>
+      <strong id="goal">800</strong>
+    </div>
+    <div class="info-card">
+      <div>🏆 我的分数</div>
+      <strong id="score">0</strong>
+    </div>
+    <div class="info-card">
+      <div>👣 剩余步数</div>
+      <strong id="moves">30</strong>
+    </div>
+  </div>
+  <div class="progress-wrap" aria-label="关卡目标进度">
+    <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+    <div id="progressText" class="progress-text">0 / 800</div>
+  </div>
+
+  <div class="audio-controls">
+    <button id="musicBtn" onclick="toggleMusic()">🎵 背景音乐：关</button>
+    <button id="soundBtn" onclick="toggleSound()">🔊 音效：开</button>
+  </div>
+
+  <div id="board" class="board"></div>
+  <div id="comboBanner" class="combo-banner" aria-live="polite"></div>
+
+  <div id="message" class="message">
+    点击两个相邻动物来交换吧！🐻
+  </div>
+
+  <button onclick="startGame(level)">
+    🔄 重新开始本关
+  </button>
+
+  <div class="level-note" id="unlockNote">🏅 已解锁关卡：第 1 关</div>
+
+  <div class="instructions">
+    🐼 游戏规则<br>
+    1. 点击两个相邻的动物交换位置。<br>
+    2. 三个或以上相同动物连在一起即可消除。<br>
+    3. 消除后动物会自动掉落。<br>
+    4. 每次成功交换消耗一步。<br>
+    5. 每个消除的动物获得10分！<br>
+    6. 横向或纵向4只连在一起：生成整排消除动物（⚡）。<br>
+    7. 5只连在一起：生成范围爆炸动物（💣），引爆周围3×3格。<br>
+    8. 达到本关目标分数即可过关，步数用完则需要重试。<br>
+    9. 每过一关，目标分数会提高；每隔几关步数也会逐渐减少。<br>
+    10. 已解锁关卡会保存在这台设备的浏览器中。<br>
+    11. 点击上方按钮可开启背景音乐或关闭音效。
+  </div>
+
+  <div id="resultOverlay" class="result-overlay" aria-hidden="true">
+    <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <div id="resultEmoji" class="result-emoji">🎉</div>
+      <h2 id="resultTitle">关卡完成！</h2>
+      <p id="resultMessage">太棒了！</p>
+      <button id="resultButton" onclick="handleResultButton()">进入下一关 ➜</button>
+      <button class="secondary-button" onclick="closeResultAndRetry()">再玩一次本关</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SIZE = 8;
+const animals = ["🐼", "🐰", "🐱", "🐻", "🦊", "🐸"];
+let board = [];
+let score = 0;
+let moves = 30;
+let level = 1;
+let targetScore = 800;
+let maxUnlockedLevel = 1;
+let selected = null;
+let busy = false;
+let gameLocked = false;
+try { maxUnlockedLevel = Math.max(1, Number(localStorage.getItem("animalMatchUnlockedLevel")) || 1); } catch (e) { maxUnlockedLevel = 1; }
+
+function getLevelSettings(n) {
+  return {
+    target: 800 + (n - 1) * 250,
+    moves: Math.max(18, 30 - Math.floor((n - 1) / 4) * 2)
+  };
+}
+function updateProgress() {
+  const pct = Math.min(100, Math.round(score / targetScore * 100));
+  document.getElementById("progressBar").style.width = pct + "%";
+  document.getElementById("progressText").textContent = `${score} / ${targetScore}`;
+}
+function updateUnlockNote() {
+  document.getElementById("unlockNote").textContent = `🏅 已解锁关卡：第 ${maxUnlockedLevel} 关`;
+}
+
+let audioContext = null;
+let musicTimer = null;
+let musicOn = false;
+let soundOn = true;
+let musicStep = 0;
+
+function getAudioContext() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!audioContext) audioContext = new AudioCtx();
+  if (audioContext.state === "suspended") audioContext.resume();
+  return audioContext;
+}
+function tone(freq, duration, type = "sine", volume = 0.06, delay = 0) {
+  if (!soundOn) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+  gain.gain.setValueAtTime(volume, ctx.currentTime + delay);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(ctx.currentTime + delay);
+  osc.stop(ctx.currentTime + delay + duration);
+}
+function playMatchSound() {
+  tone(660, .12, "sine", .07);
+  tone(880, .16, "sine", .05, .07);
+}
+function playLineSound() {
+  tone(420, .12, "sawtooth", .045);
+  tone(900, .24, "sine", .06, .08);
+}
+function playBombSound() {
+  tone(110, .32, "triangle", .09);
+  tone(520, .22, "sine", .07, .08);
+  tone(760, .28, "sine", .05, .18);
+}
+function playSwapSound() {
+  tone(520, .07, "sine", .035);
+}
+function toggleSound() {
+  soundOn = !soundOn;
+  document.getElementById("soundBtn").textContent = soundOn ? "🔊 音效：开" : "🔇 音效：关";
+  if (soundOn) playSwapSound();
+}
+function toggleMusic() {
+  getAudioContext();
+  musicOn = !musicOn;
+  const btn = document.getElementById("musicBtn");
+  btn.textContent = musicOn ? "🎵 背景音乐：开" : "🎵 背景音乐：关";
+  if (musicOn) {
+    const melody = [392, 494, 587, 494, 440, 523, 659, 523, 392, 494, 587, 659, 587, 494, 440, 392];
+    musicStep = 0;
+    musicTimer = setInterval(() => {
+      if (!musicOn) return;
+      const freq = melody[musicStep % melody.length];
+      // 背景旋律独立于音效开关，使用轻柔、较低音量
+      const ctx = getAudioContext();
+      if (ctx) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(.018, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .32);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + .33);
+      }
+      musicStep++;
+    }, 360);
+  } else {
+    clearInterval(musicTimer);
+    musicTimer = null;
+  }
+}
+function randomAnimal() {
+  return animals[Math.floor(Math.random() * animals.length)];
+}
+function makeAnimal(animal = randomAnimal(), special = null) {
+  return { animal, special };
+}
+function createBoard() {
+  board = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      let item;
+      do {
+        item = makeAnimal();
+      } while (
+        (c >= 2 && board[r * SIZE + c - 1]?.animal === item.animal &&
+          board[r * SIZE + c - 2]?.animal === item.animal) ||
+        (r >= 2 && board[(r - 1) * SIZE + c]?.animal === item.animal &&
+          board[(r - 2) * SIZE + c]?.animal === item.animal)
+      );
+      board.push(item);
+    }
+  }
+}
+function startGame(levelToStart = level) {
+  level = Math.max(1, Number(levelToStart) || 1);
+  const settings = getLevelSettings(level);
+  targetScore = settings.target;
+  score = 0; moves = settings.moves; selected = null; busy = false; gameLocked = false;
+  document.getElementById("level").textContent = level;
+  document.getElementById("goal").textContent = targetScore;
+  document.getElementById("resultOverlay").classList.remove("show");
+  document.getElementById("resultOverlay").setAttribute("aria-hidden", "true");
+  updateUnlockNote();
+  createBoard();
+  updateMessage(`第 ${level} 关：达到 ${targetScore} 分即可过关！🐻`);
+  render();
+}
+function render() {
+  document.getElementById("level").textContent = level;
+  document.getElementById("goal").textContent = targetScore;
+  document.getElementById("score").textContent = score;
+  document.getElementById("moves").textContent = moves;
+  updateProgress();
+  const el = document.getElementById("board");
+  el.innerHTML = "";
+  board.forEach((item, i) => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.dataset.index = i;
+    if (selected === i) cell.classList.add("selected");
+    if (item) {
+      cell.textContent = item.animal;
+      if (item.special === "line") {
+        cell.classList.add("special-line");
+        const mark = document.createElement("span");
+        mark.className = "special-mark"; mark.textContent = "⚡";
+        cell.appendChild(mark);
+      } else if (item.special === "bomb") {
+        cell.classList.add("special-bomb");
+        const mark = document.createElement("span");
+        mark.className = "special-mark"; mark.textContent = "💣";
+        cell.appendChild(mark);
+      }
+    }
+    cell.addEventListener("click", () => clickCell(i));
+    cell.addEventListener("pointerdown", event => {
+      if (busy || gameLocked || moves <= 0) return;
+      event.preventDefault();
+      cell.setPointerCapture(event.pointerId);
+      cell.dataset.dragStart = i;
+    });
+    cell.addEventListener("pointerup", event => {
+      if (busy || gameLocked || moves <= 0) return;
+      const start = Number(cell.dataset.dragStart);
+      delete cell.dataset.dragStart;
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const targetCell = target?.closest(".cell");
+      if (!targetCell) return;
+      const end = Number(targetCell.dataset.index);
+      if (Number.isInteger(start) && Number.isInteger(end) &&
+          start !== end && adjacent(start, end)) {
+        selected = null; swap(start, end);
+      }
+    });
+    el.appendChild(cell);
+  });
+}
+function updateMessage(message) {
+  document.getElementById("message").textContent = message;
+}
+function adjacent(a, b) {
+  return Math.abs(Math.floor(a / SIZE) - Math.floor(b / SIZE)) +
+         Math.abs((a % SIZE) - (b % SIZE)) === 1;
+}
+function clickCell(i) {
+  if (busy || gameLocked || moves <= 0) return;
+  if (selected === null) { selected = i; render(); return; }
+  if (selected === i) { selected = null; render(); return; }
+  if (!adjacent(selected, i)) { selected = i; render(); return; }
+  const a = selected; selected = null; swap(a, i);
+}
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+let comboHideTimer = null;
+function showCombo(chain) {
+  if (chain < 2) return;
+  const banner = document.getElementById("comboBanner");
+  if (!banner) return;
+  let words;
+  if (chain === 2) words = "👍 赞！×2";
+  else if (chain === 3) words = "🌟 太棒了！×3";
+  else if (chain === 4) words = "🔥 厉害！×4";
+  else if (chain === 5) words = "🎉 不可思议！×5";
+  else words = `🏆 连击王！×${chain}`;
+  banner.textContent = words;
+  banner.classList.remove("show");
+  // 强制重新触发动画，让连续连击每次都能弹出
+  void banner.offsetWidth;
+  banner.classList.add("show");
+  clearTimeout(comboHideTimer);
+  comboHideTimer = setTimeout(() => banner.classList.remove("show"), 850);
+}
+
+async function swap(a, b) {
+  if (gameLocked || busy || moves <= 0) return;
+  busy = true;
+  playSwapSound();
+  const cells = document.querySelectorAll(".cell");
+  const rectA = cells[a].getBoundingClientRect();
+  const rectB = cells[b].getBoundingClientRect();
+  const dx = rectB.left - rectA.left, dy = rectB.top - rectA.top;
+  const animationA = cells[a].animate(
+    [{ transform: "translate(0,0)" }, { transform: `translate(${dx}px,${dy}px)` }],
+    { duration: 220, easing: "ease-in-out", fill: "forwards" });
+  const animationB = cells[b].animate(
+    [{ transform: "translate(0,0)" }, { transform: `translate(${-dx}px,${-dy}px)` }],
+    { duration: 220, easing: "ease-in-out", fill: "forwards" });
+  await Promise.all([animationA.finished, animationB.finished]);
+  [board[a], board[b]] = [board[b], board[a]];
+  render();
+  const runs = findRuns();
+  const specialPlan = planSpecials(runs, a, b);
+  if (runs.length === 0 && !board[a]?.special && !board[b]?.special) {
+    const newCells = document.querySelectorAll(".cell");
+    const backA = newCells[a].animate(
+      [{ transform: "translate(0,0)" }, { transform: `translate(${dx}px,${dy}px)` }],
+      { duration: 180, easing: "ease-in-out" });
+    const backB = newCells[b].animate(
+      [{ transform: "translate(0,0)" }, { transform: `translate(${-dx}px,${-dy}px)` }],
+      { duration: 180, easing: "ease-in-out" });
+    await Promise.all([backA.finished, backB.finished]);
+    [board[a], board[b]] = [board[b], board[a]];
+    busy = false; render(); updateMessage("没有形成三消哦，再试一次！🐰");
+    return;
+  }
+  moves--;
+  await resolveMatches(specialPlan);
+}
+function findRuns() {
+  const runs = [];
+  // 横向连续组合
+  for (let r = 0; r < SIZE; r++) {
+    let c = 0;
+    while (c < SIZE) {
+      const animal = board[r * SIZE + c]?.animal;
+      if (!animal) { c++; continue; }
+      let end = c + 1;
+      while (end < SIZE && board[r * SIZE + end]?.animal === animal) end++;
+      if (end - c >= 3) {
+        runs.push({ type: "horizontal", length: end - c,
+          cells: Array.from({length:end-c}, (_,k) => r*SIZE+c+k) });
+      }
+      c = end;
+    }
+  }
+  // 纵向连续组合
+  for (let c = 0; c < SIZE; c++) {
+    let r = 0;
+    while (r < SIZE) {
+      const animal = board[r * SIZE + c]?.animal;
+      if (!animal) { r++; continue; }
+      let end = r + 1;
+      while (end < SIZE && board[end * SIZE + c]?.animal === animal) end++;
+      if (end - r >= 3) {
+        runs.push({ type: "vertical", length: end-r,
+          cells: Array.from({length:end-r}, (_,k) => (r+k)*SIZE+c) });
+      }
+      r = end;
+    }
+  }
+  return runs;
+}
+function planSpecials(runs, a, b) {
+  const plans = new Map();
+  // 5连优先生成炸弹；4连生成整行/整列消除动物
+  runs.slice().sort((x,y) => y.length-x.length).forEach(run => {
+    if (run.length < 4) return;
+    const anchor = run.cells.includes(b) ? b :
+                   run.cells.includes(a) ? a : run.cells[0];
+    if (!plans.has(anchor)) {
+      plans.set(anchor, { special: run.length >= 5 ? "bomb" : "line",
+                          direction: run.type });
+    }
+  });
+  return plans;
+}
+function activateSpecial(index, clearSet, queue) {
+  const item = board[index];
+  if (!item?.special) return;
+  if (item.special === "line") {
+    const row = Math.floor(index / SIZE), col = index % SIZE;
+    // 纵向4连生成纵向清除，横向4连生成横向清除
+    const plan = item.direction || "horizontal";
+    if (plan === "horizontal") {
+      for (let c = 0; c < SIZE; c++) clearSet.add(row * SIZE + c);
+    } else {
+      for (let r = 0; r < SIZE; r++) clearSet.add(r * SIZE + col);
+    }
+  } else if (item.special === "bomb") {
+    const row = Math.floor(index / SIZE), col = index % SIZE;
+    for (let r = Math.max(0,row-1); r <= Math.min(SIZE-1,row+1); r++) {
+      for (let c = Math.max(0,col-1); c <= Math.min(SIZE-1,col+1); c++) {
+        clearSet.add(r * SIZE + c);
+      }
+    }
+  }
+}
+async function resolveMatches(initialPlans = new Map()) {
+  let runs = findRuns();
+  let first = true;
+  let chainCount = 0;
+  while (runs.length > 0 || first && initialPlans.size > 0) {
+    const plans = first ? initialPlans : new Map();
+    first = false;
+    const clearSet = new Set();
+    runs.forEach(run => run.cells.forEach(i => clearSet.add(i)));
+    // 生成特殊动物的位置保留，不参与本轮消除
+    plans.forEach((plan, index) => {
+      clearSet.delete(index);
+      if (board[index]) {
+        board[index].special = plan.special;
+        board[index].direction = plan.direction;
+      }
+    });
+    // 被消除的已有特殊动物会触发自己的能力，连锁触发也会继续扩散
+    const queue = [...clearSet];
+    const activated = new Set();
+    while (queue.length) {
+      const idx = queue.shift();
+      if (activated.has(idx)) continue;
+      activated.add(idx);
+      const before = new Set(clearSet);
+      activateSpecial(idx, clearSet, queue);
+      clearSet.forEach(i => { if (!before.has(i)) queue.push(i); });
+    }
+    const clearList = [...clearSet].filter(i => board[i]);
+    if (clearList.length === 0) break;
+    chainCount++;
+    showCombo(chainCount);
+    const hadBomb = clearList.some(i => board[i]?.special === "bomb");
+    const hadLine = clearList.some(i => board[i]?.special === "line");
+    if (hadBomb) playBombSound();
+    else if (hadLine) playLineSound();
+    else playMatchSound();
+
+    clearList.forEach(i => {
+      const cell = document.querySelector(`.cell[data-index="${i}"]`);
+      if (cell) {
+        const special = board[i]?.special;
+        cell.classList.add(special === "bomb" ? "matched-bomb" :
+                           special === "line" ? "matched-line" : "matched");
+      }
+    });
+    await sleep(420);
+    score += clearList.length * 10;
+    clearList.forEach(i => board[i] = null);
+    render();
+    const newAnimals = dropAnimals();
+    render();
+    newAnimals.forEach(i => {
+      const cell = document.querySelector(`.cell[data-index="${i}"]`);
+      if (cell) cell.classList.add("falling");
+    });
+    await sleep(320);
+    runs = findRuns();
+    // 自动连锁时，4/5连也会生成特殊动物
+    if (runs.length) {
+      const nextPlans = new Map();
+      runs.slice().sort((x,y) => y.length-x.length).forEach(run => {
+        if (run.length >= 4) {
+          const anchor = run.cells[0];
+          if (!nextPlans.has(anchor)) nextPlans.set(anchor, {
+            special: run.length >= 5 ? "bomb" : "line", direction: run.type
+          });
+        }
+      });
+      initialPlans = nextPlans;
+    } else {
+      initialPlans = new Map();
+    }
+  }
+  busy = false;
+  render();
+  if (score >= targetScore) finishLevel(true);
+  else if (moves <= 0) finishLevel(false);
+  else updateMessage("✨ 消除成功！继续加油！🐻");
+}
+function finishLevel(won) {
+  gameLocked = true;
+  selected = null;
+  const overlay = document.getElementById("resultOverlay");
+  const title = document.getElementById("resultTitle");
+  const message = document.getElementById("resultMessage");
+  const emoji = document.getElementById("resultEmoji");
+  const button = document.getElementById("resultButton");
+  if (won) {
+    maxUnlockedLevel = Math.max(maxUnlockedLevel, level + 1);
+    try { localStorage.setItem("animalMatchUnlockedLevel", String(maxUnlockedLevel)); } catch (e) {}
+    emoji.textContent = "🏆";
+    title.textContent = `第 ${level} 关通过！`;
+    message.textContent = `太棒了！你获得 ${score} 分，成功达到目标 ${targetScore} 分。下一关等你挑战！`;
+    button.textContent = "进入下一关 ➜";
+    updateMessage(`🎉 第 ${level} 关成功通关！`);
+  } else {
+    emoji.textContent = "🌱";
+    title.textContent = "再接再厉！";
+    message.textContent = `本关目标是 ${targetScore} 分，你得到 ${score} 分。再试一次，一定可以的！`;
+    button.textContent = "重新挑战本关";
+    updateMessage("步数用完了，继续努力！🐼");
+  }
+  updateUnlockNote();
+  overlay.classList.add("show");
+  overlay.setAttribute("aria-hidden", "false");
+}
+function handleResultButton() {
+  if (score >= targetScore) startGame(level + 1);
+  else startGame(level);
+}
+function closeResultAndRetry() { startGame(level); }
+function dropAnimals() {
+  const newAnimals = new Set();
+  for (let c = 0; c < SIZE; c++) {
+    const remaining = [];
+    for (let r = SIZE - 1; r >= 0; r--) {
+      const item = board[r * SIZE + c];
+      if (item) remaining.push(item);
+    }
+    while (remaining.length < SIZE) {
+      remaining.push(makeAnimal());
+      newAnimals.add((SIZE - remaining.length) * SIZE + c);
+    }
+    for (let r = SIZE - 1; r >= 0; r--) {
+      board[r * SIZE + c] = remaining[SIZE - 1 - r];
+    }
+  }
+  return newAnimals;
+}
+startGame(maxUnlockedLevel);
+</script></body>
+</html>
