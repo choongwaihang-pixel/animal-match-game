@@ -64,6 +64,7 @@ h1 {
   margin-top: 5px;
 }
 
+
 .board {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -72,8 +73,13 @@ h1 {
   background: #f6c9df;
   border-radius: 20px;
   box-shadow: 0 7px 18px #dfb5ce;
-  touch-action: manipulation;
+
+  /* 允许拖拽动物，避免页面跟着滚动 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
+  
 
 .cell {
   position: relative;
@@ -306,7 +312,50 @@ function render() {
 
     cell.textContent = animal || "";
 
-    cell.addEventListener("click", () => clickCell(i));
+    
+// 点击操作：保留原来的点击交换功能
+cell.addEventListener("click", () => clickCell(i));
+
+// 触摸和鼠标拖拽操作
+cell.addEventListener("pointerdown", (event) => {
+  if (busy || moves <= 0) return;
+
+  event.preventDefault();
+
+  cell.setPointerCapture(event.pointerId);
+
+  cell.dataset.dragStart = i;
+});
+
+cell.addEventListener("pointerup", (event) => {
+  if (busy || moves <= 0) return;
+
+  const start = Number(cell.dataset.dragStart);
+
+  delete cell.dataset.dragStart;
+
+  const target = document.elementFromPoint(
+    event.clientX,
+    event.clientY
+  );
+
+  const targetCell = target?.closest(".cell");
+
+  if (!targetCell) return;
+
+  const end = Number(targetCell.dataset.index);
+
+  if (
+    Number.isInteger(start) &&
+    Number.isInteger(end) &&
+    start !== end &&
+    adjacent(start, end)
+  ) {
+    selected = null;
+    swap(start, end);
+  }
+});
+
 
     el.appendChild(cell);
   });
